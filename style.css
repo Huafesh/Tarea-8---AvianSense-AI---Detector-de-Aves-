@@ -38,20 +38,19 @@ body {
     position: relative;
 }
 
-/* Parallax Background */
+/* Parallax Background Video */
 #parallax-bg {
     position: fixed;
     top: -5%;
     left: -5%;
     width: 110%;
     height: 110%;
-    background-image: url('bg.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    object-fit: cover;
     z-index: -1;
+    pointer-events: none;
     transform: scale(1.1); /* Ensure it covers the screen even when moving */
     transition: transform 0.1s ease-out;
+    will-change: transform; /* Garantiza 0 lag acelerando por GPU */
 }
 
 .app-container {
@@ -399,6 +398,7 @@ main {
     animation-timing-function: linear, ease-in-out;
     animation-iteration-count: infinite, infinite;
     animation-direction: normal, alternate;
+    will-change: left, transform; /* Hardware Acceleration para evitar lag */
 }
 
 @keyframes flyLTR {
@@ -555,5 +555,52 @@ footer {
 @keyframes bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-15px); }
+}
+
+/* Pantalla de Carga */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-color);
+    z-index: 99999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.loading-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.loading-content {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.spinner-large {
+    font-size: 4rem;
+    color: var(--primary);
+    animation: spin 1s linear infinite;
+    filter: drop-shadow(0 0 15px var(--primary-glow));
+}
+
+.loading-content h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+}
+
+.loading-content p {
+    color: var(--text-muted);
+    font-weight: 300;
 }
 

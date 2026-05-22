@@ -56,9 +56,19 @@ async function loadModels() {
         
         predictBtn.disabled = false;
         predictBtn.querySelector('span').textContent = 'Analizar Imagen';
+        
+        // Ocultar pantalla de carga
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+        }
     } catch (e) {
         resultContent.innerHTML = `<div class="error-message"><i class="ph ph-warning-circle"></i> Error cargando el modelo. Revisa la consola o asegúrate de usar un servidor local.</div>`;
         console.error("Error loading model:", e);
+        
+        // Ocultar pantalla de carga incluso si falla
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) loadingScreen.classList.add('hidden');
     }
 }
 
@@ -172,22 +182,11 @@ predictBtn.addEventListener('click', async () => {
             // FASE 1: Guardia de seguridad (Object Detection)
             const objectPredictions = await cocoModel.detect(previewImage);
             
-            // Buscar si la IA detectó un ave ('bird') con al menos 30% de confianza
-            const isBirdDetected = objectPredictions.some(pred => pred.class === 'bird' && pred.score > 0.3);
-
-            if (!isBirdDetected) {
-                // Si no hay aves, detenemos el proceso y mostramos alerta
-                resultContent.innerHTML = `
-                    <div class="error-message" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: var(--warning);">
-                        <i class="ph ph-warning" style="font-size: 2.5rem; margin-bottom: 0.5rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));"></i>
-                        <br>
-                        <strong style="font-size: 1.1rem;">No se ha detectado ningún ave</strong>
-                        <p style="font-size: 0.95rem; margin-top: 0.5rem; color: var(--text-main);">
-                            El filtro de seguridad IA no encontró características de aves en la imagen. Por favor, asegúrate de subir una foto donde el ave sea claramente visible.
-                        </p>
-                    </div>`;
-                return; // Detiene la ejecución, saltando al finally block
-            }
+            // Buscar si la IA detectó un ave ('bird') o si hay dudas
+            const isBirdDetected = objectPredictions.some(pred => pred.class === 'bird');
+            
+            // Ya no bloqueamos la ejecución si falla el filtro (COCO-SSD a veces no detecta rostros de aves en primer plano como los búhos)
+            // Simplemente pasamos el dato a la fase 2
             
             // FASE 2: Clasificación taxonómica
             let tensor = tf.browser.fromPixels(previewImage)
@@ -202,7 +201,7 @@ predictBtn.addEventListener('click', async () => {
             const index = predictionArray.indexOf(Math.max(...predictionArray));
             const confidence = Math.max(...predictionArray);
             
-            renderResult(index, confidence);
+            renderResult(index, confidence, isBirdDetected);
             
             tensor.dispose();
         } catch (error) {
@@ -216,12 +215,18 @@ predictBtn.addEventListener('click', async () => {
     }, 100);
 });
 
-function renderResult(index, confidence) {
+function renderResult(index, confidence, isBirdDetected = true) {
     const percent = (confidence * 100).toFixed(1);
+    
+    // Si COCO-SSD no detectó un ave entera, mostramos un pequeño aviso, pero damos el resultado de todas formas
+    const warningBadge = !isBirdDetected 
+        ? `<div style="background: rgba(245,158,11,0.15); color: var(--warning); padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; margin-bottom: 10px; display: inline-block; border: 1px solid rgba(245,158,11,0.3);"><i class="ph-fill ph-warning"></i> Análisis forzado (Filtro omitido)</div>` 
+        : '';
     
     if (confidence < 0.6) {
         resultContent.innerHTML = `
             <div class="result-item">
+                ${warningBadge}
                 <div class="result-group" style="color: var(--warning);">
                     <span><i class="ph ph-question"></i> No identificado</span>
                     <span class="confidence-text">${percent}%</span>
@@ -246,6 +251,7 @@ function renderResult(index, confidence) {
         
         resultContent.innerHTML = `
             <div class="result-item">
+                ${warningBadge}
                 <div class="result-group">
                     <span><i class="ph-fill ph-check-circle"></i> ${groupName}</span>
                     <span class="confidence-text">${percent}%</span>
@@ -270,8 +276,8 @@ function renderResult(index, confidence) {
     }
 }
 
-// Iniciar cargando los dos modelos
-loadModels();
+// Iniciar cargando los dos modelos (con pequeño delay para asegurar que el HTML de carga se dibuje)
+setTimeout(loadModels, 100);
 
 // Efecto 3D Parallax / Giroscopio (Mouse)
 const parallaxBg = document.getElementById('parallax-bg');
@@ -370,8 +376,9 @@ function createBirds() {
     }
 }
 
-// Generar las aves al iniciar
-createBirds();
+// Retrasar la generación de las aves para no bloquear la carga inicial pesada del modelo de IA (TensorFlow WebGL)
+// Esto soluciona el lag de los primeros segundos
+setTimeout(createBirds, 3000);
 
 // Lógica del botón de encendido/apagado
 toggleBirdsBtn.addEventListener('click', () => {

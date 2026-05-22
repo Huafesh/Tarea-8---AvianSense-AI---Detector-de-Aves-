@@ -14,26 +14,26 @@
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- TensorFlow.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <!-- TensorFlow.js (cargado de forma asíncrona para no bloquear el renderizado) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd" defer></script>
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- SVG Filter para efecto de tela ondeando en el texto -->
-    <svg style="position: absolute; width: 0; height: 0;">
-        <filter id="wind-filter">
-            <feTurbulence type="fractalNoise" baseFrequency="0.015 0.05" numOctaves="2" result="warp">
-                <animate attributeName="baseFrequency" values="0.01 0.05;0.02 0.08;0.01 0.05" dur="5s" repeatCount="indefinite" />
-            </feTurbulence>
-            <feDisplacementMap in="SourceGraphic" in2="warp" scale="8" xChannelSelector="R" yChannelSelector="B" />
-        </filter>
-    </svg>
+    <!-- Pantalla de Carga -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <i class="ph ph-spinner-gap spinner-large"></i>
+            <h2>AvianSense <span style="color: #3b82f6;">AI</span></h2>
+            <p>Inicializando motores de Inteligencia Artificial...</p>
+        </div>
+    </div>
 
-    <!-- Contenedor Parallax -->
-    <div id="parallax-bg"></div>
+
+    <!-- Contenedor Parallax (Video) -->
+    <video id="parallax-bg" src="modelo/bg.mp4" autoplay loop muted playsinline></video>
 
     <!-- Contenedor de Aves de Cristal -->
     <div id="birds-container" class="birds-container"></div>
