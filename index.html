@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AvianSense AI - Clasificador de Aves</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- SVG Filter para efecto de tela ondeando en el texto -->
+    <svg style="position: absolute; width: 0; height: 0;">
+        <filter id="wind-filter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015 0.05" numOctaves="2" result="warp">
+                <animate attributeName="baseFrequency" values="0.01 0.05;0.02 0.08;0.01 0.05" dur="5s" repeatCount="indefinite" />
+            </feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="warp" scale="8" xChannelSelector="R" yChannelSelector="B" />
+        </filter>
+    </svg>
+
+    <!-- Contenedor Parallax -->
+    <div id="parallax-bg"></div>
+
+    <!-- Contenedor de Aves de Cristal -->
+    <div id="birds-container" class="birds-container"></div>
+
+    <!-- Botón Toggle Aves -->
+    <button id="toggleBirdsBtn" class="toggle-birds-btn" title="Activar/Desactivar Aves">
+        <i class="ph-fill ph-bird"></i>
+    </button>
+
+    <!-- Overlay de Drag & Drop Global -->
+    <div id="globalDropzone" class="global-dropzone">
+        <div class="global-dropzone-content">
+            <i class="ph ph-image"></i>
+            <h2>Suelta tu imagen para analizarla</h2>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <i class="ph-fill ph-bird"></i>
+                <h1>AvianSense <span class="wavy-text">AI</span></h1>
+            </div>
+            <p class="subtitle">Clasificador de grupos taxonómicos con Deep Learning</p>
+        </header>
+
+        <main>
+            <div class="card upload-card">
+                <div class="dropzone" id="dropzone">
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+                    <div class="dropzone-content" id="dropzoneContent">
+                        <i class="ph ph-upload-simple"></i>
+                        <p>Arrastra tu imagen aquí o <span>explora</span></p>
+                        <p class="small-text">Soporta JPG, PNG (Max 5MB)</p>
+                    </div>
+                    <img id="previewImage" alt="Vista previa">
+                    <button id="resetBtn" class="reset-btn" title="Quitar imagen"><i class="ph ph-x"></i></button>
+                </div>
+                
+                <button id="predictBtn" class="primary-btn" disabled>
+                    <i class="ph ph-spinner-gap spinner"></i>
+                    <span>Cargando modelo...</span>
+                </button>
+            </div>
+
+            <div class="card result-card" id="resultCard">
+                <div class="result-header">
+                    <h2>Resultados del Análisis</h2>
+                </div>
+                
+                <div id="resultContent" class="result-content">
+                    <div class="placeholder-text">Sube una imagen para ver los resultados</div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Desarrollado con TensorFlow.js</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
