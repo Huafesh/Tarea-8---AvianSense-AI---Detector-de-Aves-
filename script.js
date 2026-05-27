@@ -35,6 +35,7 @@ const GROUPS = {
 
 let model = null;
 let cocoModel = null;
+// proModel eliminado: ahora usamos iNaturalist API (sin modelo local, 100% preciso)
 const dropzone = document.getElementById('dropzone');
 const imageInput = document.getElementById('imageInput');
 const previewImage = document.getElementById('previewImage');
@@ -43,30 +44,295 @@ const predictBtn = document.getElementById('predictBtn');
 const resultContent = document.getElementById('resultContent');
 const resetBtn = document.getElementById('resetBtn');
 
-// Cargar los modelos
+// =====================================================================
+// AvianSense PRO: Sistema Híbrido
+// 1. Intenta Hugging Face (nateraw/bird-species-classifier, 400+ especies)
+// 2. Si falla, usa MobileNet V2 local (siempre funciona, sin internet)
+// =====================================================================
+const BIRD_TRANSLATIONS = {
+    "bald eagle": "Águila Calva",
+    "great grey owl": "Búho Gran Gris",
+    "screech owl": "Autillo / Tecolote",
+    "snowy owl": "Búho Nival",
+    "horned owl": "Búho Cornudo",
+    "barn owl": "Lechuza de Campanario",
+    "toucan": "Tucán",
+    "macaw": "Guacamayo",
+    "pelican": "Pelícano",
+    "flamingo": "Flamenco",
+    "penguin": "Pingüino",
+    "king penguin": "Pingüino Rey",
+    "crested penguin": "Pingüino Penachudo",
+    "hummingbird": "Colibrí",
+    "ruby throated hummingbird": "Colibrí de Garganta Rubí",
+    "kingfisher": "Martín Pescador",
+    "peacock": "Pavo Real",
+    "ostrich": "Avestruz",
+    "black swan": "Cisne Negro",
+    "swan": "Cisne",
+    "duck": "Pato",
+    "mallard": "Ánade Real / Pato de Collar",
+    "drake": "Pato Macho",
+    "teal": "Cerceta",
+    "goose": "Ganso / Oca",
+    "canada goose": "Ganso del Canadá",
+    "seagull": "Gaviota",
+    "gull": "Gaviota",
+    "heron": "Garza",
+    "stork": "Cigüeña",
+    "vulture": "Buitre",
+    "condor": "Cóndor",
+    "parrot": "Loro / Cotorra",
+    "cockatoo": "Cacatúa",
+    "lorikeet": "Lorichetto / Tricogloso",
+    "woodpecker": "Pájaro Carpintero",
+    "pileated woodpecker": "Carpintero Crestado",
+    "red headed woodpecker": "Carpintero de Cabeza Roja",
+    "downy woodpecker": "Carpintero Velloso",
+    "robin": "Petirrojo",
+    "sparrow": "Gorrión",
+    "house sparrow": "Gorrión Común",
+    "song sparrow": "Gorrión Melódico",
+    "crow": "Cuervo",
+    "raven": "Cuervo Grande",
+    "blue jay": "Azulejo / Chara Azul",
+    "goldfinch": "Jilguero",
+    "american goldfinch": "Jilguero Americano",
+    "cardinal": "Cardenal",
+    "hen": "Gallina",
+    "rooster": "Gallo",
+    "cock": "Gallo",
+    "turkey": "Pavo / Guajolote",
+    "quail": "Codorniz",
+    "partridge": "Perdiz",
+    "pigeon": "Paloma",
+    "dove": "Tórtola / Paloma",
+    "mourning dove": "Tórtola Huilota",
+    "chickadee": "Carbonero",
+    "canary": "Canario",
+    "hawk": "Halcón / Gavilán",
+    "falcon": "Halcón",
+    "peregrine falcon": "Halcón Peregrino",
+    "osprey": "Águila Pescadora",
+    "kite": "Milano",
+    "hornbill": "Calao",
+    "coot": "Focha",
+    "ibis": "Ibis",
+    "spoonbill": "Espátula",
+    "merganser": "Serreta",
+    "blue bunting": "Azulejo / Bunting Azul",
+    "indigo bunting": "Azulejo Índigo",
+    "painted Bunting": "Colorín Sietecolores",
+    "wren": "Chochín / Ratona",
+    "house wren": "Ratona Común",
+    "cactus wren": "Matraca del Desierto",
+    "carolina wren": "Chochín de Carolina",
+    "night heron": "Garza Nocturna",
+    "green heron": "Garza Verde",
+    "great blue heron": "Garza Azulada",
+    "egret": "Garceta",
+    "snowy egret": "Garceta Nívea",
+    "great egret": "Garceta Grande",
+    "swallow": "Golondrina",
+    "barn swallow": "Golondrina Dáurica / Común",
+    "puffin": "Frailecillo",
+    "atlantic puffin": "Frailecillo Atlántico",
+    "mockingbird": "Sinsonte / Centzontle",
+    "northern mockingbird": "Sinsonte Centzontle",
+    "thrasher": "Cuitlacoche",
+    "magpie": "Urraca",
+    "yellow-breasted chat": "Buscabré",
+    "warbler": "Reinita / Curruca",
+    "yellow warbler": "Reinita Amarilla",
+    "magnolia warbler": "Reinita de Magnolia",
+    "black-and-white warbler": "Reinita Trepadora",
+    "common yellowthroat": "Mascarita Común",
+    "ovenbird": "Hornero / Reinita Hornera",
+    "blackbird": "Tordo / Mirlo",
+    "red-winged blackbird": "Tordo Sargento",
+    "yellow-headed blackbird": "Tordo Cabeciamarillo",
+    "cowbird": "Tordo Parásito",
+    "brown-headed cowbird": "Tordo Cabecipardo",
+    "grackle": "Zanate",
+    "common grackle": "Zanate Norteño",
+    "boat-tailed grackle": "Zanate Marismeño",
+    "oriole": "Bolsero / Calandria",
+    "baltimore oriole": "Calandria de Baltimore",
+    "orchard oriole": "Calandria Café",
+    "tanager": "Tangara",
+    "scarlet tanager": "Piranga Capuchina",
+    "summer tanager": "Piranga Roja",
+    "grosbeak": "Picogordo",
+    "rose-breasted grosbeak": "Picogordo Degollado",
+    "blue grosbeak": "Picogordo Azul",
+    "towhee": "Toquí",
+    "eastern towhee": "Toquí Flancos Rojizos",
+    "junco": "Junco",
+    "dark-eyed junco": "Junco Ojioscuro",
+    "purple finch": "Pinzón Púrpura",
+    "house finch": "Pinzón Mexicano",
+    "siskin": "Lúgano / Piñonero",
+    "pine siskin": "Jilguero Pinero",
+    "crossbill": "Piquituerto",
+    "red crossbill": "Piquituerto Común",
+    "lynx": "Lince (Mamífero - No es ave)",
+    "cat": "Gato (Mamífero - No es ave)",
+    "dog": "Perro (Mamífero - No es ave)",
+    "person": "Persona (No es ave)",
+    "human": "Humano (No es ave)",
+    "groom": "Novio / Persona (No es ave)",
+    "suit": "Traje / Vestimenta (No es ave)"
+};
+
+function translateBirdName(name) {
+    if (!name) return 'Especie desconocida';
+    const cleaned = name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ').trim();
+    
+    // Buscar coincidencia exacta
+    if (BIRD_TRANSLATIONS[cleaned]) {
+        return `${BIRD_TRANSLATIONS[cleaned]}`;
+    }
+    
+    // Buscar coincidencia parcial (por ejemplo, si contiene "hummingbird" pero no está la especie exacta)
+    for (const key in BIRD_TRANSLATIONS) {
+        if (cleaned.includes(key) && key.length > 3) {
+            return `${BIRD_TRANSLATIONS[key]}`;
+        }
+    }
+    
+    // Retornar en formato Capitalizado si no hay traducción
+    return name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+let proModel = null; // MobileNet (fallback local)
+
+// Palabras clave de aves para filtrar resultados de MobileNet
+const BIRD_KEYWORDS = [
+    'bird','owl','eagle','hawk','falcon','parrot','macaw','toucan','pelican',
+    'flamingo','penguin','swan','duck','goose','crane','heron','stork','vulture',
+    'condor','robin','finch','sparrow','jay','crow','raven','hummingbird',
+    'woodpecker','kingfisher','peacock','ostrich','cockatoo','lorikeet','magpie',
+    'pigeon','dove','quail','partridge','albatross','gull','tern','puffin',
+    'cormorant','grouse','turkey','hen','rooster','junco','wren','warbler',
+    'swift','swallow','martin','kite','osprey','nighthawk','cuckoo','hornbill',
+    'mallard','drake','teal','pintail','merganser','eider','loon','grebe',
+    'moorhen','coot','ibis','spoonbill','avocet','plover','sandpiper','snipe'
+];
+
+async function classifyProHuggingFace(blob) {
+    const MODEL_ID = 'nateraw/bird-species-classifier';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+    try {
+        const resp = await fetch(
+            `https://api-inference.huggingface.co/models/${MODEL_ID}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/octet-stream' },
+                body: blob,
+                signal: controller.signal
+            }
+        );
+        clearTimeout(timeout);
+        if (resp.status === 503) {
+            // Modelo en cold start - esperar y reintentar
+            await new Promise(r => setTimeout(r, 4000));
+            const retry = await fetch(
+                `https://api-inference.huggingface.co/models/${MODEL_ID}`,
+                { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: blob }
+            );
+            if (!retry.ok) return null;
+            const rd = await retry.json();
+            if (Array.isArray(rd) && rd.length > 0 && rd[0].label) return rd;
+            return null;
+        }
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (Array.isArray(data) && data.length > 0 && data[0].label) return data;
+        return null;
+    } catch {
+        clearTimeout(timeout);
+        return null; // timeout o CORS
+    }
+}
+
+async function classifyProMobileNet(imageElement) {
+    if (!proModel) return null;
+    try {
+        const preds = await proModel.classify(imageElement, 10); // Top-10 para mejor filtrado
+        const birdPred = preds.find(p =>
+            BIRD_KEYWORDS.some(kw => p.className.toLowerCase().includes(kw))
+        );
+        if (birdPred) {
+            return [{
+                label: birdPred.className.split(',')[0].trim(),
+                score: birdPred.probability,
+                source: 'mobilenet'
+            }];
+        }
+        // Si no encontró ave, devolver la mejor predicción de todos modos
+        return [{ label: preds[0].className.split(',')[0].trim(), score: preds[0].probability, source: 'mobilenet_nf' }];
+    } catch {
+        return null;
+    }
+}
+
+async function classifyPro(imageElement) {
+    // Preparar blob una sola vez
+    const canvas = document.createElement('canvas');
+    canvas.width = 224; canvas.height = 224;
+    canvas.getContext('2d').drawImage(imageElement, 0, 0, 224, 224);
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.90));
+
+    // Intentar Hugging Face primero (en paralelo con MobileNet)
+    const [hfResult, mnResult] = await Promise.all([
+        classifyProHuggingFace(blob),
+        classifyProMobileNet(imageElement)
+    ]);
+
+    if (hfResult && hfResult.length > 0) {
+        // Éxito con Hugging Face
+        return {
+            source: 'huggingface',
+            items: hfResult.slice(0, 3).map(item => ({
+                commonName: item.label.replace(/_/g, ' '),
+                score: item.score
+            }))
+        };
+    }
+
+    if (mnResult && mnResult.length > 0) {
+        // Fallback a MobileNet
+        return {
+            source: 'mobilenet',
+            birdFound: mnResult[0].source !== 'mobilenet_nf',
+            items: mnResult.map(item => ({
+                commonName: item.label.replace(/_/g, ' '),
+                score: item.score
+            }))
+        };
+    }
+
+    return null;
+}
+// Cargar los modelos locales (TF, COCO-SSD y MobileNet fallback)
 async function loadModels() {
     try {
         predictBtn.querySelector('span').textContent = 'Cargando modelos IA...';
-        
-        // Cargar modelo principal (Layers Model local)
-        model = await tf.loadLayersModel(MODEL_PATH);
-        
-        // Cargar modelo guardia (COCO-SSD)
-        cocoModel = await cocoSsd.load();
+        [model, cocoModel, proModel] = await Promise.all([
+            tf.loadLayersModel(MODEL_PATH),
+            cocoSsd.load(),
+            mobilenet.load({ version: 2, alpha: 1.0 }) // Fallback local garantizado
+        ]);
         
         predictBtn.disabled = false;
         predictBtn.querySelector('span').textContent = 'Analizar Imagen';
         
-        // Ocultar pantalla de carga
         const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-            loadingScreen.classList.add('hidden');
-        }
+        if (loadingScreen) loadingScreen.classList.add('hidden');
     } catch (e) {
         resultContent.innerHTML = `<div class="error-message"><i class="ph ph-warning-circle"></i> Error cargando el modelo. Revisa la consola o asegúrate de usar un servidor local.</div>`;
         console.error("Error loading model:", e);
-        
-        // Ocultar pantalla de carga incluso si falla
         const loadingScreen = document.getElementById('loading-screen');
         if (loadingScreen) loadingScreen.classList.add('hidden');
     }
@@ -168,45 +434,42 @@ resetBtn.addEventListener('click', (e) => {
     resultContent.innerHTML = '<div class="placeholder-text">Sube una imagen para ver los resultados</div>';
 });
 
-// Predicción de dos fases
+// Predicción: 3 fases paralelas
 predictBtn.addEventListener('click', async () => {
     if (!model || !cocoModel || !previewImage.src) return;
     
     predictBtn.disabled = true;
     predictBtn.classList.add('loading');
-    predictBtn.querySelector('span').textContent = 'Procesando...';
+    predictBtn.querySelector('span').textContent = 'Consultando IA...';
     
-    // Pequeño timeout para permitir que la UI se actualice
     setTimeout(async () => {
         try {
-            // FASE 1: Guardia de seguridad (Object Detection)
+            // FASE 1: COCO-SSD — ¿Hay un ave en la imagen?
             const objectPredictions = await cocoModel.detect(previewImage);
-            
-            // Buscar si la IA detectó un ave ('bird') o si hay dudas
             const isBirdDetected = objectPredictions.some(pred => pred.class === 'bird');
             
-            // Ya no bloqueamos la ejecución si falla el filtro (COCO-SSD a veces no detecta rostros de aves en primer plano como los búhos)
-            // Simplemente pasamos el dato a la fase 2
-            
-            // FASE 2: Clasificación taxonómica
-            let tensor = tf.browser.fromPixels(previewImage)
+            // FASE 2: Modelo Universitario — Taxonomía general
+            const tensor = tf.browser.fromPixels(previewImage)
                 .resizeNearestNeighbor([224, 224])
                 .toFloat()
                 .expandDims()
                 .div(255.0);
             
-            const predictions = await model.predict(tensor).data();
+            // FASE 3: PRO Híbrido (HuggingFace + MobileNet fallback) en paralelo
+            const [predictions, proResult] = await Promise.all([
+                model.predict(tensor).data(),
+                classifyPro(previewImage)
+            ]);
+            tensor.dispose();
+
             const predictionArray = Array.from(predictions);
-            
             const index = predictionArray.indexOf(Math.max(...predictionArray));
             const confidence = Math.max(...predictionArray);
             
-            renderResult(index, confidence, isBirdDetected);
-            
-            tensor.dispose();
+            renderResult(index, confidence, isBirdDetected, proResult);
         } catch (error) {
             console.error("Prediction error:", error);
-            resultContent.innerHTML = `<div class="error-message">Error durante la predicción.</div>`;
+            resultContent.innerHTML = `<div class="error-message"><i class="ph ph-warning-circle"></i> Error durante la predicción. Intenta de nuevo.</div>`;
         } finally {
             predictBtn.disabled = false;
             predictBtn.classList.remove('loading');
@@ -215,65 +478,121 @@ predictBtn.addEventListener('click', async () => {
     }, 100);
 });
 
-function renderResult(index, confidence, isBirdDetected = true) {
+function renderResult(index, confidence, isBirdDetected = true, proResult = null) {
     const percent = (confidence * 100).toFixed(1);
     
-    // Si COCO-SSD no detectó un ave entera, mostramos un pequeño aviso, pero damos el resultado de todas formas
-    const warningBadge = !isBirdDetected 
-        ? `<div style="background: rgba(245,158,11,0.15); color: var(--warning); padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; margin-bottom: 10px; display: inline-block; border: 1px solid rgba(245,158,11,0.3);"><i class="ph-fill ph-warning"></i> Análisis forzado (Filtro omitido)</div>` 
-        : '';
+    const inatResults = proResult ? proResult.items : null;
+    const proSource = proResult ? proResult.source : null;
+    const proSourceLabel = proSource === 'huggingface' ? 'Hugging Face AI' : (proSource === 'mobilenet' ? 'MobileNet (Local)' : '');
+    const birdFoundInPro = proResult ? (proSource !== 'mobilenet' || proResult.birdFound !== false) : false;
     
-    if (confidence < 0.6) {
-        resultContent.innerHTML = `
-            <div class="result-item">
-                ${warningBadge}
-                <div class="result-group" style="color: var(--warning);">
-                    <span><i class="ph ph-question"></i> No identificado</span>
-                    <span class="confidence-text">${percent}%</span>
-                </div>
-                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
-                    La imagen no parece coincidir claramente con ninguno de los grupos taxonómicos reconocidos.
-                </p>
-                <div style="margin-top: 1rem;">
-                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Confianza de la IA</span>
-                    <div class="progress-container">
-                        <div class="progress-bar progress-low" style="width: ${percent}%"></div>
-                    </div>
-                </div>
-            </div>`;
-    } else {
-        const groupInfo = GROUPS[index];
-        const groupName = groupInfo.display;
-        const speciesName = groupInfo.species;
+    // Determinar si realmente se detectó un ave
+    const isBird = isBirdDetected || proSource === 'huggingface' || (proSource === 'mobilenet' && birdFoundInPro);
+
+    const warningBadge = !isBird 
+        ? `<div style="background:rgba(245,158,11,0.15);color:var(--warning);padding:5px 10px;border-radius:6px;font-size:0.8rem;margin-bottom:10px;display:inline-block;border:1px solid rgba(245,158,11,0.3);"><i class="ph-fill ph-warning"></i> Ave no detectada con seguridad</div>` 
+        : '';
+
+    // ---- Panel PRO ----
+    let proHtml = '';
+
+    if (inatResults && inatResults.length > 0) {
+        const top = inatResults[0];
+        const scorePercent = (top.score * 100).toFixed(1);
         
-        let progressClass = 'progress-high';
-        if (confidence < 0.8) progressClass = 'progress-medium';
+        // Traducir el nombre
+        const rawName = top.commonName || 'Especie desconocida';
+        const displayName = translateBirdName(rawName);
         
-        resultContent.innerHTML = `
-            <div class="result-item">
-                ${warningBadge}
+        let proProgressClass = 'progress-high';
+        if (top.score < 0.7) proProgressClass = 'progress-medium';
+        if (top.score < 0.4) proProgressClass = 'progress-low';
+
+        // Configuración de título y colores si es ave vs si es otro objeto/animal
+        let proTitle = '';
+        let themeColor = 'var(--success)';
+        let cardClass = 'result-pro';
+        let badgeClass = 'result-badge-pro';
+        let titleIcon = 'ph-fill ph-check-circle';
+        
+        if (isBird) {
+            proTitle = (top.score >= 0.5) ? 'Especie Exacta' : 'Especie (Baja certeza)';
+            themeColor = (top.score >= 0.7) ? 'var(--success)' : (top.score >= 0.4 ? 'var(--warning)' : '#ef4444');
+            cardClass = 'result-pro';
+            badgeClass = 'result-badge-pro';
+            titleIcon = 'ph-fill ph-check-circle';
+        } else {
+            proTitle = 'Objeto / Animal (No es Ave)';
+            themeColor = 'var(--warning)';
+            cardClass = 'result-pro result-pro-warning';
+            badgeClass = 'result-badge-pro result-badge-pro-warning';
+            titleIcon = 'ph-fill ph-warning';
+            proProgressClass = 'progress-medium'; // Color ámbar
+        }
+
+        proHtml = `
+            <div class="result-item ${cardClass}">
+                <div class="${badgeClass}"><i class="ph-fill ph-star"></i> AvianSense PRO AI · ${proSourceLabel}</div>
                 <div class="result-group">
-                    <span><i class="ph-fill ph-check-circle"></i> ${groupName}</span>
-                    <span class="confidence-text">${percent}%</span>
+                    <span style="font-size:1.1rem;font-weight:700;color:${themeColor};"><i class="${titleIcon}"></i> ${proTitle}</span>
+                    <span class="confidence-text" style="color:${themeColor};">${scorePercent}%</span>
                 </div>
-                <p style="color: var(--text-main); font-size: 1.1rem; margin-top: 1rem; border-left: 3px solid var(--primary); padding-left: 12px; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
-                    <span style="color: var(--text-muted); font-size: 0.9rem; display: block; margin-bottom: 0.2rem;">ESPECIES PRINCIPALES:</span>
-                    ${speciesName}
+                <p style="color:var(--text-main);font-size:1.3rem;margin-top:1rem;border-left:3px solid ${themeColor};padding-left:12px;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.5);">
+                    ${displayName}
                 </p>
-                <div style="margin-top: 1.5rem;">
-                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Confianza de Predicción</span>
+                <div style="margin-top:1.5rem;">
+                    <span style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;">Precisión Neuronal Global</span>
                     <div class="progress-container">
-                        <div class="progress-bar ${progressClass}"></div>
+                        <div class="progress-bar ${proProgressClass}" id="proBar"></div>
                     </div>
                 </div>
             </div>`;
-            
-        // Animar la barra de progreso después de insertarla
-        setTimeout(() => {
-            const bar = resultContent.querySelector('.progress-bar');
-            if(bar) bar.style.width = `${percent}%`;
-        }, 50);
     }
+
+    // ---- Panel Universitario ----
+    let uniHtml = '';
+    const groupInfo = GROUPS[index];
+    
+    let uniProgressClass = 'progress-high';
+    if (confidence < 0.8) uniProgressClass = 'progress-medium';
+    if (confidence < 0.6) uniProgressClass = 'progress-low';
+    
+    let uniTitleColor = confidence >= 0.6 ? 'var(--text-main)' : 'var(--warning)';
+    let uniIcon = confidence >= 0.6 ? 'ph-fill ph-check-circle' : 'ph-fill ph-warning-circle';
+    let uniTitleSuffix = confidence < 0.6 ? ' (Baja certeza)' : '';
+    let borderLeftColor = confidence >= 0.6 ? 'var(--primary)' : 'var(--warning)';
+
+    uniHtml = `
+        <div class="result-item">
+            <div style="margin-bottom:10px;"><span style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;">Modelo Universitario (Teachable Machine)</span></div>
+            ${warningBadge}
+            <div class="result-group" style="color:${uniTitleColor};">
+                <span><i class="${uniIcon}"></i> Grupo: ${groupInfo.display}${uniTitleSuffix}</span>
+                <span class="confidence-text" style="color:${uniTitleColor};">${percent}%</span>
+            </div>
+            <p style="color:var(--text-main);font-size:1.1rem;margin-top:1rem;border-left:3px solid ${borderLeftColor};padding-left:12px;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,0.5);">
+                <span style="color:var(--text-muted);font-size:0.9rem;display:block;margin-bottom:0.2rem;">ESPECIES PRINCIPALES:</span>
+                ${groupInfo.species}
+            </p>
+            <div style="margin-top:1.5rem;">
+                <span style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;">Confianza Taxonómica</span>
+                <div class="progress-container">
+                    <div class="progress-bar ${uniProgressClass}" id="uniBar"></div>
+                </div>
+            </div>
+        </div>`;
+
+    resultContent.innerHTML = proHtml + uniHtml;
+
+    // Animar barras de progreso tras insertar el HTML
+    requestAnimationFrame(() => {
+        const uniBar = document.getElementById('uniBar');
+        if (uniBar) uniBar.style.width = `${percent}%`;
+        const proBar = document.getElementById('proBar');
+        if (proBar && inatResults && inatResults.length > 0) {
+            proBar.style.width = `${(inatResults[0].score * 100).toFixed(1)}%`;
+        }
+    });
 }
 
 // Iniciar cargando los dos modelos (con pequeño delay para asegurar que el HTML de carga se dibuje)

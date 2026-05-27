@@ -107,6 +107,7 @@ main {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
+    align-items: start;
 }
 
 @media (max-width: 768px) {
@@ -341,11 +342,60 @@ main {
 }
 
 .result-item {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
     border-radius: 12px;
-    padding: 1rem;
-    margin-top: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 1.5rem;
+}
+
+.result-pro {
+    background: rgba(16, 185, 129, 0.05); /* Esmeralda suave */
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.result-pro::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--success);
+    box-shadow: 0 0 10px var(--success);
+}
+
+.result-badge-pro {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.result-pro-warning {
+    background: rgba(245, 158, 11, 0.05) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.result-pro-warning::before {
+    background: var(--warning) !important;
+    box-shadow: 0 0 10px var(--warning) !important;
+}
+
+.result-badge-pro-warning {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: var(--warning) !important;
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
 }
 
 .result-group {
